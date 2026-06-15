@@ -1,9 +1,16 @@
 require "download_strategy"
+require "json"
 
-# Downloads a release asset from a private GitHub repository, authenticating
-# with HOMEBREW_GITHUB_API_TOKEN. GitHub authorizes the request and redirects
-# to a pre-signed asset URL; Homebrew's curl uses --location (not
-# --location-trusted), so the token is correctly dropped on the redirect.
+# Downloads a release asset from a *private* GitHub repository using
+# HOMEBREW_GITHUB_API_TOKEN.
+#
+# The formula `url` is the normal browser download URL so Homebrew names the
+# cached file with the correct `.tar.gz` extension and unpacks it. At fetch
+# time we resolve that to the asset's API URL and download it with
+# `Accept: application/octet-stream` -- the only reliable way to pull assets
+# from a private repository (the browser URL 404s for private repos). GitHub
+# then redirects to a pre-signed URL; Homebrew's curl uses `--location` (not
+# `--location-trusted`), so the token is dropped on the cross-host redirect.
 class GitHubPrivateRepositoryReleaseDownloadStrategy < CurlDownloadStrategy
   def initialize(url, name, version, **meta)
     super
@@ -17,9 +24,26 @@ class GitHubPrivateRepositoryReleaseDownloadStrategy < CurlDownloadStrategy
   private
 
   def _fetch(url:, resolved_url:, timeout:)
-    curl_download url,
+    curl_download asset_api_url,
+                  "--header", "Accept: application/octet-stream",
                   "--header", "Authorization: token #{@github_token}",
                   to: temporary_path, timeout: timeout
+  end
+
+  def asset_api_url
+    match = @url.match(%r{^https://github\.com/([^/]+)/([^/]+)/releases/download/([^/]+)/(.+)$})
+    raise CurlDownloadStrategyError, "Unexpected GitHub release URL: #{@url}" if match.nil?
+
+    owner, repo, tag, filename = match.captures
+    metadata = curl_output(
+      "--header", "Accept: application/vnd.github+json",
+      "--header", "Authorization: token #{@github_token}",
+      "https://api.github.com/repos/#{owner}/#{repo}/releases/tags/#{tag}"
+    ).stdout
+    asset = JSON.parse(metadata).fetch("assets", []).find { |a| a["name"] == filename }
+    raise CurlDownloadStrategyError, "No asset named #{filename} in #{owner}/#{repo}@#{tag}" if asset.nil?
+
+    asset.fetch("url")
   end
 end
 
