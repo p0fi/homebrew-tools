@@ -50,19 +50,19 @@ end
 class Bopas < Formula
   desc "Automate SAP time-entry creation via the SAP Fiori form"
   homepage "https://github.com/p0fi/bopas"
-  version "2026-06-15"
+  version "2026-11-13.2"
   license :cannot_represent
 
   on_macos do
     on_arm do
       url "https://github.com/p0fi/bopas/releases/download/#{version}/bopas_darwin_arm64.tar.gz",
           using: GitHubPrivateRepositoryReleaseDownloadStrategy
-      sha256 "f808b854876511d41913ae80a32582a426d7263d61b832ec8793dbbf3c136647"
+      sha256 "b9cc4ccce71c7178327fecfa219d1c7601db1f197174edd39264a6ce5afe557a"
     end
     on_intel do
       url "https://github.com/p0fi/bopas/releases/download/#{version}/bopas_darwin_amd64.tar.gz",
           using: GitHubPrivateRepositoryReleaseDownloadStrategy
-      sha256 "03e263ef1e4e2d84b67947679ad2b84ea0d98da0ef092903e1aaeb5cbfca9f82"
+      sha256 "0182d38379d4f2295c2e956ca7304766757b6419f5b92473828933165e411b7b"
     end
   end
 
